@@ -14,10 +14,15 @@ st.title("🎓 Student Performance Predictor")
 st.write("Predict student performance and understand influencing factors")
 
 # ==============================
-# LOAD MODEL + SCALER
+# LOAD MODEL + SCALER (CACHED)
 # ==============================
-model = joblib.load("student_model.pkl")
-scaler = joblib.load("scaler.pkl")
+@st.cache_resource
+def load_models():
+    model = joblib.load("student_model.pkl")
+    scaler = joblib.load("scaler.pkl")
+    return model, scaler
+
+model, scaler = load_models()
 
 # SHAP initialization
 shap.initjs()
@@ -87,9 +92,14 @@ if st.button("🔍 Predict Performance"):
     # ==============================
     st.subheader("🧠 Model Explanation (SHAP)")
 
-    explainer = shap.Explainer(model, scaler.transform)
-    shap_values = explainer(scaled_data)
+    try:
+        explainer = shap.Explainer(model)
+        shap_values = explainer(scaled_data)
 
-    fig, ax = plt.subplots()
-    shap.plots.waterfall(shap_values[0], show=False)
-    st.pyplot(fig)
+        fig = plt.figure()
+        shap.plots.waterfall(shap_values[0], show=False)
+        st.pyplot(fig)
+
+    except Exception as e:
+        st.warning("SHAP explanation could not be generated.")
+        st.text(str(e))
